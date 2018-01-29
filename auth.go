@@ -1,43 +1,30 @@
 package main
 
 import (
-	"io/ioutil"
 	"time"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 )
 
-func GenerateToken(email string, role string) (string, error) {
-	privateKey, err := ioutil.ReadFile("keys/app.rsa")
-	if err != nil {
-		fmt.Println("Error reading private key")
-		return "", err
-	}
+const APP_KEY = "randomtokenstringrandomtokenstringrandomtokenstringrandomtokenstringrandomtokenstring"
 
+func GenerateToken(email string, role string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": email,
 		"role": role,
 		"exp": time.Now().Add(time.Hour * 72).Unix(),
 	})
-
-	// Sign and get the complete encoded token as a string using the secret
-	tokenString, err := token.SignedString(privateKey)
-
+	tokenString, err := token.SignedString([]byte(APP_KEY))
 	return tokenString, err
 }
 
 func ParseToken(myToken string) (string, error) {
 	token, err := jwt.Parse(myToken, func(token *jwt.Token) (interface{}, error) {
-		privateKey, err := ioutil.ReadFile("keys/app.rsa")
-		if err != nil {
-			fmt.Println("Error reading private key")
-			return "", err
-		}
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
-		return privateKey, nil
+		return []byte(APP_KEY), nil
 	})
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		return claims["email"].(string), nil
@@ -48,7 +35,6 @@ func ParseToken(myToken string) (string, error) {
 
 func TokenMiddleware(c *gin.Context) {
 	token := c.GetHeader("Authorization")
-	fmt.Println(token)
 	if token != ""{
 		_, err := ParseToken(token)
 		if err != nil{
